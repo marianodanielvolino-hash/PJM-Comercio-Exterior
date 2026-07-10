@@ -194,6 +194,13 @@ export async function saveSimulation(
       ncm_position_id: item.ncmPositionId,
       ncm_source: item.ncmSource,
       tax_parameter_id: item.taxParameterId,
+      is_divisible: item.isDivisible,
+      min_separable_qty: item.minSeparableQty,
+      weight_per_unit_kg: item.weightPerUnitKg,
+      urgency: item.urgency,
+      partial_urgent_needed: item.partialUrgentNeeded,
+      urgent_qty_suggested: item.urgentQtySuggested,
+      declared_use: item.declaredUse,
     }));
     const { error: itemsError } = await supabase.from('simulation_items').insert(itemRows);
     if (itemsError) return { error: mapDbError(itemsError.message) };
@@ -224,6 +231,11 @@ export async function saveSimulation(
     other_expenses: draft.logistics.otherDefinitiveCosts,
   };
   await supabase.from('logistic_costs').upsert(logisticsRow, { onConflict: 'simulation_id' });
+
+  if (payload.asCompleted && (draft.operation.transportMode === 'ocean_fcl' || draft.operation.transportMode === 'ocean_lcl')) {
+    const { generateAlternativeScenarios } = await import('@/app/actions/scenarios');
+    await generateAlternativeScenarios(simulationId!);
+  }
 
   revalidatePath('/dashboard');
   revalidatePath(`/simulaciones/${simulationId}`);

@@ -7,7 +7,8 @@ Supabase real y decidir sobre los riesgos conocidos (ver más abajo).
 Rama: `claude/cotizador-importacion-argentina-h2uxfi`
 Alcance: MVP (Sprint 1) + Sprint 1.5 (estabilización) + Sprints 2 a 5
 (catálogo NCM real, documentos/checklist/panel PJM, cotización comercial
-formal, integraciones/feature flags/health center).
+formal, integraciones/feature flags/health center) + automatización de
+escenarios alternativos de envío parcial (marítimo + courier/aéreo).
 
 ---
 
@@ -18,7 +19,7 @@ formal, integraciones/feature flags/health center).
 | Build (`next build`) | ✅ Limpio |
 | Lint (`eslint`) | ✅ Limpio |
 | Typecheck (`tsc --noEmit`) | ✅ Limpio |
-| Tests unitarios (`vitest`) | ✅ 63/63 en verde |
+| Tests unitarios (`vitest`) | ✅ 94/94 en verde |
 | Working tree | ✅ Sin cambios sin commitear |
 | Migraciones | ✅ 5 migraciones (`0001`–`0005`), aplicables en orden |
 | QA manual end-to-end contra Supabase real | ⬜ **No corrido en este ciclo** — pendiente antes de producción |
@@ -98,6 +99,21 @@ referencias BCRA/VUCE, dos cron jobs protegidos por `CRON_SECRET`
 `src/app/admin/integraciones/page.tsx`, `vercel.json`,
 `supabase/migrations/0005_integrations.sql`.
 
+### Post-release — Automatización de escenarios alternativos de envío parcial
+Cuando una simulación marítima tiene mercadería divisible o con una
+porción urgente, el sistema compara automáticamente el escenario marítimo
+completo contra separar una parte por courier o por aéreo — siempre
+estimativo, nunca presentado como ahorro garantizado ni como cotización
+formal. Reglas de elegibilidad courier y tarifas 100% parametrizadas
+(nada hardcodeado); motor puro con 31 tests reutiliza el motor de cálculo
+existente para el tramo aéreo y el remanente marítimo.
+
+**Archivos clave:** `src/lib/calculations/shipmentScenarioOptimizer.ts`,
+`src/app/actions/scenarios.ts`, `src/components/scenarios/`,
+`src/components/admin/ScenarioReviewPanel.tsx`,
+`supabase/migrations/0006_shipment_scenarios.sql`. Ver `SCENARIOS_QA.md`
+para el detalle completo y las simplificaciones documentadas.
+
 ---
 
 ## 3. Migraciones aplicadas
@@ -109,6 +125,7 @@ Aplicar **en orden** contra un proyecto Supabase (ver sección 5):
 3. `supabase/migrations/0003_documents_checklist_admin.sql` — documentos, checklist, auditoría, notificaciones.
 4. `supabase/migrations/0004_formal_quotes.sql` — cotización comercial formal.
 5. `supabase/migrations/0005_integrations.sql` — feature flags, tipo de cambio, referencias regulatorias, logs.
+6. `supabase/migrations/0006_shipment_scenarios.sql` — reglas/tarifas courier y aéreo, campos de mercadería divisible, escenarios alternativos.
 
 Después de las migraciones: `supabase/seed.sql` (catálogo NCM/tributos de
 ejemplo, fallback — **no es el catálogo real de producción**, ver riesgos).
@@ -264,19 +281,20 @@ Instrucciones completas y alternativas (CLI vs. SQL Editor manual) en
 ```bash
 npx supabase login
 npx supabase link --project-ref <tu-project-ref>
-npx supabase db push                                   # aplica 0001 a 0005 en orden
+npx supabase db push                                   # aplica 0001 a 0006 en orden
 npx supabase db execute -f supabase/seed.sql --linked   # seed de catálogo NCM de ejemplo
 ```
 
 **Opción B — SQL Editor del dashboard (sin CLI):** pegar y ejecutar, en
 orden y cada uno en una query separada: `0001_init.sql`, `0002_ncm_catalog.sql`,
 `0003_documents_checklist_admin.sql`, `0004_formal_quotes.sql`,
-`0005_integrations.sql`, y por último `seed.sql`.
+`0005_integrations.sql`, `0006_shipment_scenarios.sql`, y por último `seed.sql`.
 
-Verificación: **Table Editor** debería mostrar ~24 tablas (incluyendo
+Verificación: **Table Editor** debería mostrar ~28 tablas (incluyendo
 `formal_quotes`, `feature_flags`, `exchange_rates`, `integration_logs`,
-etc.) y `ncm_positions`/`tax_parameters` deberían tener 7 filas cada una
-tras el seed.
+`shipping_scenario_rules`, `simulation_alternative_scenarios`, etc.) y
+`ncm_positions`/`tax_parameters` deberían tener 7 filas cada una tras el
+seed.
 
 ---
 
@@ -312,7 +330,7 @@ cada request.
 
 ```bash
 npm run lint    # ESLint — debe terminar sin errores
-npm run test    # Vitest — 63 tests unitarios, sin dependencias de Supabase
+npm run test    # Vitest — 94 tests unitarios, sin dependencias de Supabase
 npm run build   # next build — typecheck + build de producción
 ```
 
@@ -340,11 +358,15 @@ ejecutar:
   comercial, RLS.
 - [`SPRINT_5_QA.md`](./SPRINT_5_QA.md) — health center, feature flags,
   tipo de cambio BNA, referencias BCRA/VUCE, cron jobs, RLS.
+- [`SCENARIOS_QA.md`](./SCENARIOS_QA.md) — escenarios alternativos de
+  envío parcial (marítimo + courier/aéreo), elegibilidad courier, wizard,
+  panel PJM, auditoría, RLS.
 
 **Orden recomendado para correrlos:** de punta a punta con dos usuarios
 `cliente` distintos + un `admin_pjm`, siguiendo el orden de los sprints (un
 checklist depende de datos creados por el anterior: simulación → solicitud
-→ documentos/checklist → cotización → integraciones).
+→ documentos/checklist → cotización → integraciones → escenarios
+alternativos).
 
 ---
 

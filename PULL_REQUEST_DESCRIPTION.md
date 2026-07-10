@@ -31,6 +31,12 @@ conectada todavía — es alcance deliberadamente fuera de este release; ver
 `RELEASE_CANDIDATE_v0.1.md` para el detalle completo de limitaciones y
 backlog recomendado.
 
+También suma una automatización post-release: cuando una simulación
+marítima tiene mercadería divisible o con una porción urgente, el sistema
+compara automáticamente el escenario marítimo completo contra separar una
+parte por courier o por aéreo (siempre estimativo, sujeto a validación
+PJM, con reglas de elegibilidad courier 100% parametrizadas).
+
 ## Alcance implementado
 
 - **Sprint 1 (MVP)**: auth, perfil/empresa, dashboard, wizard de
@@ -52,6 +58,10 @@ backlog recomendado.
   consola/log (sin proveedores reales), tipo de cambio BNA manual, CRUD de
   referencias BCRA/VUCE, cron jobs protegidos por `CRON_SECRET`, health
   center en `/admin/integraciones`.
+- **Escenarios alternativos de envío parcial**: comparación automática
+  marítimo completo vs. marítimo+courier vs. marítimo+aéreo cuando hay
+  mercadería divisible/urgente, con elegibilidad courier parametrizada,
+  panel de validación PJM y conversión a base de cotización formal.
 
 Detalle completo por sprint (archivos, módulos, decisiones de alcance) en
 `RELEASE_CANDIDATE_v0.1.md`.
@@ -61,18 +71,18 @@ Detalle completo por sprint (archivos, módulos, decisiones de alcance) en
 1. Clonar la rama y `npm install`.
 2. Crear un proyecto de Supabase y completar `.env.local` (ver variables
    más abajo).
-3. Aplicar las 5 migraciones + `supabase/seed.sql` (`npx supabase db push`
+3. Aplicar las 6 migraciones + `supabase/seed.sql` (`npx supabase db push`
    o pegarlas en el SQL Editor, en orden — ver `RELEASE_CANDIDATE_v0.1.md`
    sección 11).
 4. `npm run seed:demo-users` para crear un usuario `cliente` y uno
    `admin_pjm` de prueba, o promover un usuario propio a mano (sección 12).
 5. `npm run dev` y correr los checklists de QA manual en orden:
    `QA_CHECKLIST.md` → `SPRINT_2_QA.md` → `SPRINT_3_QA.md` →
-   `SPRINT_4_QA.md` → `SPRINT_5_QA.md` (cada uno depende de datos creados
-   por el anterior).
+   `SPRINT_4_QA.md` → `SPRINT_5_QA.md` → `SCENARIOS_QA.md` (cada uno
+   depende de datos creados por el anterior).
 
 Verificación automática ya corrida en esta rama: `npm run lint`,
-`npm run build` y `npm run test` (63 tests) — todos limpios.
+`npm run build` y `npm run test` (94 tests) — todos limpios.
 
 ## Migraciones
 
@@ -82,6 +92,7 @@ supabase/migrations/0002_ncm_catalog.sql                 # catálogo NCM/tributo
 supabase/migrations/0003_documents_checklist_admin.sql   # documentos, checklist, auditoría, notificaciones
 supabase/migrations/0004_formal_quotes.sql                # cotización comercial formal
 supabase/migrations/0005_integrations.sql                 # feature flags, tipo de cambio, referencias, logs
+supabase/migrations/0006_shipment_scenarios.sql            # reglas/tarifas courier y aéreo, escenarios alternativos
 ```
 
 Aplicar en ese orden. Después, `supabase/seed.sql` (catálogo NCM de
@@ -116,9 +127,11 @@ staging.
 - [ ] `SPRINT_4_QA.md` — cotización formal, numeración, respuesta del
       cliente, PDF, RLS.
 - [ ] `SPRINT_5_QA.md` — health center, feature flags, cron jobs, RLS.
+- [ ] `SCENARIOS_QA.md` — escenarios alternativos de envío parcial,
+      elegibilidad courier, wizard, panel PJM, RLS.
 - [ ] `npm run lint` sin errores.
 - [ ] `npm run build` sin errores.
-- [ ] `npm run test` — 63/63 en verde.
+- [ ] `npm run test` — 94/94 en verde.
 
 ## Riesgos conocidos / limitaciones
 

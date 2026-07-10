@@ -16,6 +16,7 @@ import { ChecklistPanel } from '@/components/checklist/ChecklistPanel';
 import { QuoteBuilder } from '@/components/quotes/QuoteBuilder';
 import { QuoteSummaryCard } from '@/components/quotes/QuoteSummaryCard';
 import { CreateQuoteButton } from '@/components/quotes/CreateQuoteButton';
+import { ScenarioReviewPanel } from '@/components/admin/ScenarioReviewPanel';
 import { NCM_STATUS_TONE } from '@/lib/constants/statusStyles';
 import { NCM_STATUS_LABELS, type NCMStatus } from '@/types/ncm';
 import type { SimulationStatus, SimulationDocumentStatus } from '@/types/simulation';
@@ -32,6 +33,7 @@ import type {
   FormalQuoteRow,
   FormalQuoteItemRow,
   FormalQuoteCostRow,
+  SimulationAlternativeScenarioRow,
 } from '@/types/database';
 
 export default async function AdminRequestDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -42,7 +44,7 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
   const { data: simulation } = await supabase.from('simulations').select('*').eq('id', id).maybeSingle<SimulationRow>();
   if (!simulation) notFound();
 
-  const [{ data: items }, { data: profile }, { data: company }, { data: request }, { data: documents }, { data: checklistItems }, { data: quotes }] = await Promise.all([
+  const [{ data: items }, { data: profile }, { data: company }, { data: request }, { data: documents }, { data: checklistItems }, { data: quotes }, { data: scenarios }] = await Promise.all([
     supabase.from('simulation_items').select('*').eq('simulation_id', id).returns<SimulationItemRow[]>(),
     supabase.from('profiles').select('*').eq('id', simulation.user_id).maybeSingle<ProfileRow>(),
     simulation.company_id
@@ -52,6 +54,7 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
     supabase.from('documents').select('*').eq('simulation_id', id).neq('status', 'replaced').order('uploaded_at', { ascending: false }).returns<DocumentRow[]>(),
     supabase.from('simulation_checklist_items').select('*').eq('simulation_id', id).returns<SimulationChecklistItemRow[]>(),
     supabase.from('formal_quotes').select('*').eq('simulation_id', id).order('created_at', { ascending: false }).returns<FormalQuoteRow[]>(),
+    supabase.from('simulation_alternative_scenarios').select('*').eq('simulation_id', id).order('created_at', { ascending: true }).returns<SimulationAlternativeScenarioRow[]>(),
   ]);
 
   const latestQuote = quotes?.[0] ?? null;
@@ -211,6 +214,12 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
     </div>
   );
 
+  const escenarios = (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6">
+      <ScenarioReviewPanel scenarios={scenarios ?? []} simulationId={simulation.id} requestId={request?.id ?? null} />
+    </div>
+  );
+
   const comentarios = (
     <div className="bg-white border border-slate-200 rounded-2xl p-6">
       <h2 className="text-sm font-bold text-slate-900 uppercase mb-4">Comentarios</h2>
@@ -244,9 +253,11 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
         resumen={resumen}
         documentos={documentos}
         checklist={checklist}
+        escenarios={escenarios}
         cotizacion={cotizacion}
         comentarios={comentarios}
         documentosCount={documents?.length}
+        escenariosCount={scenarios?.length}
       />
     </div>
   );

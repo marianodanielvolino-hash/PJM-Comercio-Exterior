@@ -109,6 +109,13 @@ export interface SimulationItemRow {
   tax_parameter_id: string | null;
   ncm_source: string;
   ncm_validation_notes: string | null;
+  is_divisible: boolean;
+  min_separable_qty: number;
+  weight_per_unit_kg: number;
+  urgency: string;
+  partial_urgent_needed: boolean;
+  urgent_qty_suggested: number;
+  declared_use: string;
   created_at: string;
   updated_at: string;
 }
@@ -286,6 +293,8 @@ export interface PjmRequestRow {
   last_activity_at: string;
   ready_for_quote_at: string | null;
   closed_at: string | null;
+  selected_scenario_id: string | null;
+  scenario_review_status: string;
   created_at: string;
   updated_at: string;
 }
@@ -385,6 +394,87 @@ export interface FormalQuoteCostRow {
   amount: number;
   sort_order: number;
   created_at: string;
+}
+
+export interface ShippingScenarioRuleRow {
+  id: string;
+  key: string;
+  description: string | null;
+  value: unknown;
+  is_active: boolean;
+  source: string | null;
+  valid_from: string | null;
+  valid_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourierRateRow {
+  id: string;
+  origin_country: string;
+  destination_country: string;
+  weight_from: number;
+  weight_to: number;
+  estimated_cost_usd: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  provider_name: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AirRateRow {
+  id: string;
+  origin: string;
+  destination: string;
+  weight_from: number;
+  weight_to: number;
+  rate_per_kg: number;
+  fuel_surcharge: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface SimulationAlternativeScenarioRow {
+  id: string;
+  simulation_id: string;
+  scenario_key: string;
+  status: string;
+  eligibility: string | null;
+  eligibility_reasons: string[];
+  recommendation: string;
+  currency: string;
+  fob_partial: number;
+  weight_partial_kg: number;
+  freight: number;
+  insurance: number;
+  customs_duty: number;
+  statistical_rate: number;
+  fiscal_credits: number;
+  local_costs: number;
+  definitive_cost: number;
+  cash_required: number;
+  unit_cost: number;
+  estimated_days_min: number;
+  estimated_days_max: number;
+  diff_cash_required: number;
+  diff_cash_required_percent: number;
+  diff_taxes: number;
+  diff_logistics: number;
+  diff_days_min: number;
+  diff_days_max: number;
+  warnings: string[];
+  assumptions: unknown;
+  items_split: unknown;
+  cost_breakdown: unknown;
+  is_preferred: boolean;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface FeatureFlagRow {

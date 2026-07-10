@@ -3,9 +3,10 @@
 import { Plus, Trash2, Info } from 'lucide-react';
 import type { MerchandiseItem } from '@/types/simulation';
 import { Card } from '@/components/ui/Card';
-import { Field, inputClass, textareaClass } from '@/components/ui/Field';
+import { Field, inputClass, textareaClass, selectClass } from '@/components/ui/Field';
 import { Button } from '@/components/ui/Button';
 import { emptyMerchandiseItem } from '@/lib/emptySimulationDraft';
+import { URGENCY_LABELS, DECLARED_USE_LABELS, type Urgency, type DeclaredUse } from '@/types/scenarios';
 
 export function MerchandiseStep({
   items,
@@ -203,6 +204,103 @@ export function MerchandiseStep({
                   onChange={(e) => updateItem(item.id, { packagingType: e.target.value })}
                 />
               </Field>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <span className="text-xs font-bold text-slate-500 uppercase block mb-3">
+                Envío parcial (courier/aéreo) — opcional
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                <Field label="¿Es divisible en envíos parciales?" htmlFor={`divisible-${item.id}`}>
+                  <select
+                    id={`divisible-${item.id}`}
+                    className={selectClass}
+                    value={item.isDivisible ? 'si' : 'no'}
+                    onChange={(e) => updateItem(item.id, { isDivisible: e.target.value === 'si' })}
+                  >
+                    <option value="no">No</option>
+                    <option value="si">Sí</option>
+                  </select>
+                </Field>
+                <Field label="Cantidad mínima separable" htmlFor={`minqty-${item.id}`}>
+                  <input
+                    id={`minqty-${item.id}`}
+                    type="number"
+                    min={0}
+                    disabled={!item.isDivisible}
+                    className={inputClass + (item.isDivisible ? '' : ' bg-slate-100 text-slate-400')}
+                    value={item.minSeparableQty}
+                    onChange={(e) => updateItem(item.id, { minSeparableQty: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Peso por unidad (kg)" htmlFor={`unitweight-${item.id}`}>
+                  <input
+                    id={`unitweight-${item.id}`}
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    className={inputClass}
+                    value={item.weightPerUnitKg}
+                    onChange={(e) => updateItem(item.id, { weightPerUnitKg: Number(e.target.value) })}
+                  />
+                </Field>
+                <Field label="Uso declarado" htmlFor={`use-declared-${item.id}`}>
+                  <select
+                    id={`use-declared-${item.id}`}
+                    className={selectClass}
+                    value={item.declaredUse}
+                    onChange={(e) => updateItem(item.id, { declaredUse: e.target.value as DeclaredUse })}
+                  >
+                    {Object.entries(DECLARED_USE_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Field label="Urgencia" htmlFor={`urgency-${item.id}`}>
+                  <select
+                    id={`urgency-${item.id}`}
+                    className={selectClass}
+                    value={item.urgency}
+                    onChange={(e) => updateItem(item.id, { urgency: e.target.value as Urgency })}
+                  >
+                    {Object.entries(URGENCY_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="¿Una parte necesita llegar antes?" htmlFor={`urgent-${item.id}`}>
+                  <select
+                    id={`urgent-${item.id}`}
+                    className={selectClass}
+                    value={item.partialUrgentNeeded ? 'si' : 'no'}
+                    onChange={(e) => updateItem(item.id, { partialUrgentNeeded: e.target.value === 'si' })}
+                  >
+                    <option value="no">No</option>
+                    <option value="si">Sí</option>
+                  </select>
+                </Field>
+                <Field label="Cantidad urgente sugerida" htmlFor={`urgentqty-${item.id}`}>
+                  <input
+                    id={`urgentqty-${item.id}`}
+                    type="number"
+                    min={0}
+                    disabled={!item.partialUrgentNeeded}
+                    className={inputClass + (item.partialUrgentNeeded ? '' : ' bg-slate-100 text-slate-400')}
+                    value={item.urgentQtySuggested}
+                    onChange={(e) => updateItem(item.id, { urgentQtySuggested: Number(e.target.value) })}
+                  />
+                </Field>
+              </div>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Con estos datos, si elegís transporte marítimo el sistema puede sugerir escenarios alternativos
+                (courier o aéreo para una porción) — siempre estimativos y sujetos a validación de PJM.
+              </p>
             </div>
           </div>
         ))}

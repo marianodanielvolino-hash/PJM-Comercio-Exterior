@@ -20,7 +20,9 @@ import { ChecklistPanel } from '@/components/checklist/ChecklistPanel';
 import { CommentThread } from '@/components/comments/CommentThread';
 import { QuoteSummaryCard } from '@/components/quotes/QuoteSummaryCard';
 import { QuoteResponseForm } from '@/components/quotes/QuoteResponseForm';
-import type { FormalQuoteRow } from '@/types/database';
+import { AlternativeScenariosBlock } from '@/components/scenarios/AlternativeScenariosBlock';
+import type { FormalQuoteRow, SimulationAlternativeScenarioRow, PjmRequestRow } from '@/types/database';
+import type { ScenarioReviewStatus } from '@/types/scenarios';
 
 export default async function SimulationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -35,12 +37,14 @@ export default async function SimulationDetailPage({ params }: { params: Promise
 
   if (!simulation || simulation.user_id !== user.id) notFound();
 
-  const [{ data: items }, { data: documents }, { data: checklistItems }, { data: comments }, { data: quotes }] = await Promise.all([
+  const [{ data: items }, { data: documents }, { data: checklistItems }, { data: comments }, { data: quotes }, { data: scenarios }, { data: pjmRequest }] = await Promise.all([
     supabase.from('simulation_items').select('*').eq('simulation_id', id).returns<SimulationItemRow[]>(),
     supabase.from('documents').select('*').eq('simulation_id', id).neq('status', 'replaced').order('uploaded_at', { ascending: false }).returns<DocumentRow[]>(),
     supabase.from('simulation_checklist_items').select('*').eq('simulation_id', id).returns<SimulationChecklistItemRow[]>(),
     supabase.from('comments').select('*').eq('simulation_id', id).eq('visibility', 'client').order('created_at', { ascending: false }).returns<CommentRow[]>(),
     supabase.from('formal_quotes').select('*').eq('simulation_id', id).order('created_at', { ascending: false }).returns<FormalQuoteRow[]>(),
+    supabase.from('simulation_alternative_scenarios').select('*').eq('simulation_id', id).order('created_at', { ascending: true }).returns<SimulationAlternativeScenarioRow[]>(),
+    supabase.from('pjm_requests').select('*').eq('simulation_id', id).maybeSingle<PjmRequestRow>(),
   ]);
 
   const latestQuote = quotes?.[0] ?? null;
@@ -184,6 +188,16 @@ export default async function SimulationDetailPage({ params }: { params: Promise
     </div>
   );
 
+  const escenarios = (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6">
+      <AlternativeScenariosBlock
+        scenarios={scenarios ?? []}
+        simulationId={simulation.id}
+        scenarioReviewStatus={(pjmRequest?.scenario_review_status as ScenarioReviewStatus) ?? 'none'}
+      />
+    </div>
+  );
+
   const observaciones = (
     <div className="bg-white border border-slate-200 rounded-2xl p-6">
       <CommentThread comments={comments ?? []} />
@@ -214,9 +228,11 @@ export default async function SimulationDetailPage({ params }: { params: Promise
         resumen={resumen}
         documentos={documentos}
         checklist={checklist}
+        escenarios={escenarios}
         cotizacion={cotizacion}
         observaciones={observaciones}
         observacionesCount={comments?.length}
+        escenariosCount={scenarios?.length}
       />
     </div>
   );

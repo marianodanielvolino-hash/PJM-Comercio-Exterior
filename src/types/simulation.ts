@@ -1,5 +1,6 @@
 import type { TransportMode, ContainerSelection } from './logistics';
 import type { NCMStatus, InterventionAgency, InterventionRisk } from './ncm';
+import type { Urgency, DeclaredUse } from './scenarios';
 
 export type OperationType = 'importacion' | 'exportacion';
 
@@ -81,6 +82,14 @@ export interface MerchandiseItem {
   ncmPositionId: string | null;
   ncmSource: 'catalog' | 'manual';
   taxParameterId: string | null;
+  /** Insumo del optimizador de escenarios alternativos de envío parcial (courier/aéreo). */
+  isDivisible: boolean;
+  minSeparableQty: number;
+  weightPerUnitKg: number;
+  urgency: Urgency;
+  partialUrgentNeeded: boolean;
+  urgentQtySuggested: number;
+  declaredUse: DeclaredUse;
 }
 
 export interface InterventionSelection {

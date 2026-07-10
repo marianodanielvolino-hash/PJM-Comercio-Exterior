@@ -6,6 +6,7 @@ const TABS = [
   { key: 'resumen', label: 'Resumen' },
   { key: 'documentos', label: 'Documentos' },
   { key: 'checklist', label: 'Checklist' },
+  { key: 'escenarios', label: 'Escenarios alternativos' },
   { key: 'cotizacion', label: 'Cotización' },
   { key: 'comentarios', label: 'Comentarios' },
 ] as const;
@@ -16,19 +17,23 @@ export function AdminRequestDetailTabs({
   resumen,
   documentos,
   checklist,
+  escenarios,
   cotizacion,
   comentarios,
   documentosCount,
+  escenariosCount,
 }: {
   resumen: ReactNode;
   documentos: ReactNode;
   checklist: ReactNode;
+  escenarios: ReactNode;
   cotizacion: ReactNode;
   comentarios: ReactNode;
   documentosCount?: number;
+  escenariosCount?: number;
 }) {
   const [active, setActive] = useState<TabKey>('resumen');
-  const content: Record<TabKey, ReactNode> = { resumen, documentos, checklist, cotizacion, comentarios };
+  const content: Record<TabKey, ReactNode> = { resumen, documentos, checklist, escenarios, cotizacion, comentarios };
 
   return (
     <div>
@@ -45,6 +50,9 @@ export function AdminRequestDetailTabs({
             {tab.label}
             {tab.key === 'documentos' && !!documentosCount && (
               <span className="ml-1.5 bg-slate-300 text-slate-700 rounded-full px-1.5 py-0.5 text-[10px]">{documentosCount}</span>
+            )}
+            {tab.key === 'escenarios' && !!escenariosCount && (
+              <span className="ml-1.5 bg-slate-300 text-slate-700 rounded-full px-1.5 py-0.5 text-[10px]">{escenariosCount}</span>
             )}
           </button>
         ))}

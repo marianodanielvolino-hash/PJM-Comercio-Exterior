@@ -40,6 +40,13 @@ export function emptyMerchandiseItem(id: string) {
     ncmPositionId: null,
     ncmSource: 'manual' as const,
     taxParameterId: null,
+    isDivisible: false,
+    minSeparableQty: 0,
+    weightPerUnitKg: 0,
+    urgency: 'baja' as const,
+    partialUrgentNeeded: false,
+    urgentQtySuggested: 0,
+    declaredUse: 'comercial' as const,
   };
 }
 

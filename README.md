@@ -48,7 +48,7 @@ npm install
 ```bash
 npx supabase login
 npx supabase link --project-ref <tu-project-ref>   # está en la URL del dashboard
-npx supabase db push                                # aplica supabase/migrations/*.sql en orden (0001 a 0005)
+npx supabase db push                                # aplica supabase/migrations/*.sql en orden (0001 a 0006)
 ```
 
 El seed (`supabase/seed.sql`) no corre automáticamente con `db push`. Aplicalo
@@ -63,19 +63,20 @@ npx supabase db execute -f supabase/seed.sql --linked
 1. Abrí **SQL Editor → New query**.
 2. Pegá y ejecutá, en orden y cada uno en una query separada, el contenido de
    `supabase/migrations/0001_init.sql`, `0002_ncm_catalog.sql`,
-   `0003_documents_checklist_admin.sql`, `0004_formal_quotes.sql` y
-   `0005_integrations.sql`.
+   `0003_documents_checklist_admin.sql`, `0004_formal_quotes.sql`,
+   `0005_integrations.sql` y `0006_shipment_scenarios.sql`.
 3. En una última query, pegá y ejecutá `supabase/seed.sql`.
 
 Verificá que haya funcionado: **Table Editor** debería mostrar las tablas de
-las cinco migraciones (`profiles`, `companies`, `simulations`,
+las seis migraciones (`profiles`, `companies`, `simulations`,
 `simulation_items`, `ncm_positions`, `tax_parameters`, `logistic_costs`,
 `documents`, `pjm_requests`, `comments`, `simulation_checklist_items`,
 `audit_logs`, `notifications`, `formal_quotes`, `formal_quote_items`,
 `formal_quote_costs`, `quote_sequences`, `feature_flags`,
-`exchange_rates`, `regulatory_references`, `integration_logs`, entre
-otras) y `ncm_positions`/`tax_parameters` deberían tener 7 filas cada una
-tras el seed.
+`exchange_rates`, `regulatory_references`, `integration_logs`,
+`shipping_scenario_rules`, `courier_rate_table`, `air_rate_table`,
+`simulation_alternative_scenarios`, entre otras) y `ncm_positions`/
+`tax_parameters` deberían tener 7 filas cada una tras el seed.
 
 ### 4. Configurar `.env.local`
 
@@ -188,20 +189,21 @@ src/
     admin/solicitudes/[id]/   Detalle de solicitud PJM (resumen, documentos, checklist, cotización, comentarios)
     admin/integraciones/      Health center: feature flags, tipo de cambio BNA, referencias BCRA/VUCE, logs
     api/cron/                 Rutas de cron protegidas por CRON_SECRET (expirar cotizaciones/documentos)
-    actions/                  Server Actions (auth, company, simulations, admin, ncm, documents, checklist, comments, notifications, quotes, integrations)
+    actions/                  Server Actions (auth, company, simulations, admin, ncm, documents, checklist, comments, notifications, quotes, integrations, scenarios)
   components/
     layout/                   Header (incluye NotificationsBell), Footer
     ui/                       Primitivas (Card, Button, Field, Badge)
     simulation/                Pasos del wizard, tarjetas de resultado, SimulationDetailTabs
-    admin/                    Controles del panel PJM (estados, comentarios, importador, validación NCM, AdminRequestDetailTabs, feature flags, tipo de cambio, referencias)
+    admin/                    Controles del panel PJM (estados, comentarios, importador, validación NCM, AdminRequestDetailTabs, feature flags, tipo de cambio, referencias, ScenarioReviewPanel)
     ncm/                      Buscador NCM, tarjetas de detalle/tributos/intervenciones (cliente y admin)
     documents/                Carga, listado y revisión de documentos (cliente y admin)
     checklist/                Checklist de documentación con semáforo (cliente y admin)
     comments/                 Hilo de comentarios internos/visibles para el cliente
     notifications/            Campanita de notificaciones in-app
     quotes/                   Borrador/edición de cotización (admin), tarjeta resumen y respuesta (cliente)
+    scenarios/                Tarjetas/tabla de escenarios alternativos (cliente); ScenarioReviewPanel vive en admin/
   lib/
-    calculations/              Motor de cálculo (puro, sin UI) + tests
+    calculations/              Motor de cálculo (puro, sin UI) + shipmentScenarioOptimizer.ts (escenarios alternativos) + tests
     ncm/                       Normalización/búsqueda/match de NCM, tributos e intervenciones; parseo CSV + tests
     integrations/               Adapters de notificación saliente (email/whatsapp/webhook) con fallback a consola/log
     supabase/                  Clientes de Supabase (browser/server/service-role) + sesión de proxy
@@ -215,7 +217,7 @@ src/
     notify.ts                    Helper de notificaciones in-app + fan-out al adapter de email (service-role, no lanza errores)
     dal.ts                     Data Access Layer (verificación de sesión/rol)
     errorMessages.ts           Traducción de errores de Supabase a mensajes cortos en español
-  types/                      Tipos de dominio y de la base de datos (incluye documents.ts, quotes.ts e integrations.ts)
+  types/                      Tipos de dominio y de la base de datos (incluye documents.ts, quotes.ts, integrations.ts y scenarios.ts)
   proxy.ts                    Protección de rutas + refresco de sesión (ex-middleware.ts)
 supabase/
   migrations/0001_init.sql    Esquema base + RLS + índices
@@ -223,6 +225,7 @@ supabase/
   migrations/0003_documents_checklist_admin.sql   Documentos, checklist, comentarios, auditoría, notificaciones + RLS (Sprint 3)
   migrations/0004_formal_quotes.sql   Cotización comercial formal, numeración, RLS (Sprint 4)
   migrations/0005_integrations.sql   Feature flags, tipo de cambio, referencias regulatorias, logs de integración + RLS (Sprint 5)
+  migrations/0006_shipment_scenarios.sql   Reglas/tarifas courier y aéreo, campos de mercadería divisible, escenarios alternativos + RLS
   seed.sql                    Catálogo NCM y parámetros de impuestos de ejemplo (fallback)
 scripts/
   seed-demo-users.mjs         Crea usuarios cliente/admin_pjm de prueba vía Admin API
@@ -232,6 +235,7 @@ SPRINT_2_QA.md                Checklist de pruebas manuales Sprint 2 (NCM/tribut
 SPRINT_3_QA.md                Checklist de pruebas manuales Sprint 3 (documentos/checklist/panel PJM)
 SPRINT_4_QA.md                Checklist de pruebas manuales Sprint 4 (cotización comercial formal)
 SPRINT_5_QA.md                Checklist de pruebas manuales Sprint 5 (integraciones, feature flags, health center)
+SCENARIOS_QA.md               Checklist de pruebas manuales — escenarios alternativos de envío parcial
 ```
 
 ## Modelo de datos
@@ -439,6 +443,63 @@ más un panel para operarla desde `/admin/integraciones`.
   para el detalle de qué quedó deliberadamente fuera (proveedores reales,
   scraping, tablas separadas por canal).
 
+## Automatización de escenarios alternativos de envío parcial
+
+`supabase/migrations/0006_shipment_scenarios.sql` agrega una comparación
+automática entre el escenario marítimo completo que carga el cliente y
+variantes con una porción de la mercadería separada por courier o por
+aéreo — siempre estimativa, nunca presentada como ahorro garantizado ni
+como cotización formal.
+
+- **Parámetros courier configurables** (`shipping_scenario_rules`, tabla
+  clave/valor jsonb): máximo de unidades de la misma especie, peso
+  máximo por paquete, valor FOB máximo, franquicia FOB para derecho de
+  importación y tasa estadística, exigencia de uso no comercial, y
+  máximo de usos anuales — nada de esto está hardcodeado en el código,
+  así que un cambio normativo se resuelve editando filas, no desplegando.
+- **Tarifas de referencia** (`courier_rate_table`, `air_rate_table`): por
+  franja de peso y ruta, con una fila `*`/`*` de fallback; editables
+  desde SQL/futuro panel admin sin tocar código.
+- **Motor puro** (`src/lib/calculations/shipmentScenarioOptimizer.ts`,
+  con 31 tests): `generateShipmentScenarios` orquesta
+  `checkCourierEligibility`, `splitCargoForCourier`/`splitCargoForAir`,
+  `calculateMaritimeOnlyScenario`/`calculateMaritimePlusCourierScenario`/
+  `calculateMaritimePlusAirScenario`, `compareScenarios`,
+  `rankScenariosByCost`/`rankScenariosBySpeed` y
+  `generateScenarioWarnings`. Reutiliza las funciones puras de
+  `importCostCalculator.ts` (CIF, DIE, tasa estadística, IVA,
+  percepciones, créditos fiscales) para el tramo aéreo — régimen general
+  completo, sin franquicia — y para recalcular el remanente marítimo; el
+  tramo courier usa una versión simplificada explícita (sólo derecho de
+  importación y tasa estadística sobre el excedente de la franquicia,
+  documentado en el código y en `SCENARIOS_QA.md`). Si no hay datos
+  mínimos (peso o valor por unidad) para un ítem divisible, ese ítem
+  queda fuera del escenario en vez de fabricar un ahorro falso.
+- **Elegibilidad courier** de tres estados —
+  `courier_eligible` / `courier_not_eligible` / `courier_requires_pjm_review`
+  — con motivos explícitos (supera valor/peso/cantidad, uso comercial
+  declarado, intervención NCM, mercadería no divisible, falta
+  información, requiere validación documental).
+- **Wizard**: el paso "Mercadería" agrega, por ítem, divisibilidad,
+  cantidad mínima separable, peso por unidad, urgencia, necesidad de
+  llegada anticipada y uso declarado. Guardar una simulación en
+  transporte marítimo con al menos un ítem divisible/urgente dispara la
+  generación automática (`generateAlternativeScenarios`,
+  `src/app/actions/scenarios.ts`), persistida en
+  `simulation_alternative_scenarios`.
+- **Cliente**: pestaña "Escenarios alternativos" en
+  `/simulaciones/[id]` con tarjetas comparativas y una tabla detallada;
+  puede marcar un escenario como preferido o pedir análisis PJM (nunca
+  convertirlo directo en cotización formal).
+- **Panel PJM**: pestaña "Escenarios alternativos" en
+  `/admin/solicitudes/[id]` para ver supuestos y desglose, validar o
+  rechazar (comentario técnico obligatorio), ajustar costos/plazos, y
+  convertir un escenario validado en la base de un borrador de
+  cotización formal (Sprint 4) — reemplazando el desglose de costos por
+  el del escenario en vez del de la simulación marítima original.
+- Ver `SCENARIOS_QA.md` para el checklist de pruebas manuales y el
+  detalle completo de simplificaciones documentadas.
+
 ## Cálculos
 
 Todo vive en `src/lib/calculations/importCostCalculator.ts` (funciones puras,
@@ -480,8 +541,9 @@ tributos/intervenciones, parseo/validación de los importadores CSV, el
 motor de cálculo (`src/lib/calculations/importCostCalculator.ts`), el
 semáforo de checklist y los bloqueos de "listo para cotización"
 (`src/lib/checklist.ts`, `src/lib/readyForQuote.ts`), los totales de la
-cotización formal (`src/lib/quoteTotals.ts`) y la verificación del secreto
-de los cron jobs (`src/lib/cron.ts`).
+cotización formal (`src/lib/quoteTotals.ts`), la verificación del secreto
+de los cron jobs (`src/lib/cron.ts`) y el optimizador de escenarios
+alternativos de envío parcial (`src/lib/calculations/shipmentScenarioOptimizer.ts`).
 
 ## QA manual
 
@@ -501,6 +563,9 @@ un proyecto Supabase real:
 - [`SPRINT_5_QA.md`](./SPRINT_5_QA.md) — health center, feature flags con
   fallback a consola/log, tipo de cambio BNA, referencias BCRA/VUCE, cron
   jobs protegidos por `CRON_SECRET`, RLS.
+- [`SCENARIOS_QA.md`](./SCENARIOS_QA.md) — escenarios alternativos de
+  envío parcial (marítimo + courier/aéreo), elegibilidad courier,
+  wizard, panel PJM, auditoría, RLS.
 
 ## Deploy en Vercel
 
@@ -573,5 +638,11 @@ Checklist rápido de "no hay nada hardcodeado":
   sin credenciales), y reemplazar la carga manual de ARCA/BNA/BCRA/VUCE por
   consumo real de sus APIs/fuentes de datos cuando estén disponibles y
   sean estables.
+- Escenarios alternativos: falta una UI de administración para
+  `shipping_scenario_rules`/`courier_rate_table`/`air_rate_table` (hoy se
+  editan por SQL — la app sólo las lee); verificar automáticamente el
+  límite de usos anuales de courier por cliente (no hay historial de uso
+  courier todavía); permitir que el wizard cargue
+  `documents.expires_at` en vez de fijarlo manualmente en Supabase.
 - Fuera de alcance de este MVP: navieras, pagos, IA clasificadora de NCM,
   firma digital, integración con ERP.
