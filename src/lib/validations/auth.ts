@@ -40,3 +40,26 @@ export type LoginFormState =
       message?: string;
     }
   | undefined;
+
+export const RequestPasswordResetSchema = z.object({
+  email: z.email({ error: 'Ingresá un email válido.' }).trim(),
+});
+
+export type RequestPasswordResetState =
+  | {
+      errors?: Partial<Record<keyof z.infer<typeof RequestPasswordResetSchema>, string[]>>;
+      message?: string;
+      success?: boolean;
+    }
+  | undefined;
+
+export const UpdatePasswordSchema = z.object({
+  password: z.string().min(8, { error: 'La contraseña debe tener al menos 8 caracteres.' }),
+});
+
+export type UpdatePasswordState =
+  | {
+      errors?: Partial<Record<keyof z.infer<typeof UpdatePasswordSchema>, string[]>>;
+      message?: string;
+    }
+  | undefined;

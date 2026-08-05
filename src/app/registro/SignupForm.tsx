@@ -4,6 +4,7 @@ import { useActionState } from 'react';
 import Link from 'next/link';
 import { signup } from '@/app/actions/auth';
 import { Field, inputClass, selectClass, textareaClass } from '@/components/ui/Field';
+import { PasswordField } from '@/components/ui/PasswordField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 
@@ -26,9 +27,15 @@ export function SignupForm() {
           <Field label="WhatsApp (opcional)" htmlFor="whatsapp">
             <input id="whatsapp" name="whatsapp" className={inputClass} />
           </Field>
-          <Field label="Contraseña" htmlFor="password" error={state?.errors?.password} hint="Mínimo 8 caracteres.">
-            <input id="password" name="password" type="password" required className={inputClass} />
-          </Field>
+          <PasswordField
+            label="Contraseña"
+            htmlFor="password"
+            error={state?.errors?.password}
+            hint="Mínimo 8 caracteres."
+            required
+            minLength={8}
+            autoComplete="new-password"
+          />
         </div>
       </Card>
 

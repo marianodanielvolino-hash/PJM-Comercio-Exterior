@@ -62,7 +62,17 @@ export function NcmImportPanel({ jobType, title }: { jobType: ImportJobType; tit
           <input id={`versionName-${jobType}`} name="versionName" className={inputClass} placeholder="Ej: Arancel ARCA agosto 2026" />
         </Field>
         <Field label="Archivo CSV" htmlFor={`file-${jobType}`}>
-          <input id={`file-${jobType}`} name="file" type="file" accept=".csv,text/csv" required className={inputClass + ' py-1.5'} />
+          <input
+            id={`file-${jobType}`}
+            name="file"
+            type="file"
+            accept=".csv,text/csv"
+            required
+            className={
+              inputClass +
+              ' py-1.5 text-slate-500 file:mr-3 file:h-full file:-my-1.5 file:-ml-3 file:px-3 file:rounded-l-lg file:border-0 file:border-r file:border-slate-300 file:bg-slate-100 file:text-sm file:font-semibold file:text-slate-700 hover:file:bg-slate-200 file:cursor-pointer cursor-pointer'
+            }
+          />
         </Field>
         <Button type="submit" disabled={isPending} variant="secondary">
           <UploadCloud className="w-4 h-4" />

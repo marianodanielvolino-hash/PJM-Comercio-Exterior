@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 const PROTECTED_PREFIXES = ['/dashboard', '/simulaciones', '/admin'];
 const ADMIN_ONLY_PREFIXES = ['/admin'];
-const AUTH_PAGES = ['/login', '/registro'];
+const AUTH_PAGES = ['/login', '/registro', '/recuperar-password'];
 
 /**
  * Refreshes the Supabase session cookie and performs optimistic route

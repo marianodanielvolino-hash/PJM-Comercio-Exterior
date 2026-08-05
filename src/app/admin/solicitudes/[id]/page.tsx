@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { requireAdmin } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/server';
+import { createDefaultChecklistForSimulation } from '@/app/actions/checklist';
+import { computeChecklistStatus } from '@/lib/checklist';
 import { Badge } from '@/components/ui/Badge';
 import { formatMoney } from '@/lib/formatMoney';
 import { StatusControls } from '@/components/admin/StatusControls';
@@ -44,7 +46,7 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
   const { data: simulation } = await supabase.from('simulations').select('*').eq('id', id).maybeSingle<SimulationRow>();
   if (!simulation) notFound();
 
-  const [{ data: items }, { data: profile }, { data: company }, { data: request }, { data: documents }, { data: checklistItems }, { data: quotes }, { data: scenarios }] = await Promise.all([
+  const [{ data: items }, { data: profile }, { data: company }, { data: request }, { data: documents }, { data: checklistItemsData }, { data: quotes }, { data: scenarios }] = await Promise.all([
     supabase.from('simulation_items').select('*').eq('simulation_id', id).returns<SimulationItemRow[]>(),
     supabase.from('profiles').select('*').eq('id', simulation.user_id).maybeSingle<ProfileRow>(),
     simulation.company_id
@@ -56,6 +58,25 @@ export default async function AdminRequestDetailPage({ params }: { params: Promi
     supabase.from('formal_quotes').select('*').eq('simulation_id', id).order('created_at', { ascending: false }).returns<FormalQuoteRow[]>(),
     supabase.from('simulation_alternative_scenarios').select('*').eq('simulation_id', id).order('created_at', { ascending: true }).returns<SimulationAlternativeScenarioRow[]>(),
   ]);
+
+  let checklistItems = checklistItemsData;
+
+  // Self-heal: any simulation with a pjm_requests row went through
+  // requestFormalQuote, which seeds the checklist. If it's still empty here,
+  // the seed insert failed at submit time — retry it now. Idempotent and
+  // safe to call speculatively (see checklist.ts).
+  if (request && (!checklistItems || checklistItems.length === 0)) {
+    const healed = await createDefaultChecklistForSimulation(id);
+    if (healed.ok) {
+      const { data: retriedItems } = await supabase
+        .from('simulation_checklist_items')
+        .select('*')
+        .eq('simulation_id', id)
+        .returns<SimulationChecklistItemRow[]>();
+      checklistItems = retriedItems;
+      simulation.checklist_status = computeChecklistStatus(retriedItems ?? []).semaphore;
+    }
+  }
 
   const latestQuote = quotes?.[0] ?? null;
   let quoteItems: FormalQuoteItemRow[] = [];

@@ -29,7 +29,7 @@ export function ChecklistStep({
   }
 
   return (
-    <Card step={6} title="Checklist documental">
+    <Card step={6} title="Autoevaluación documental">
       <div className="flex items-center gap-2 mb-5">
         <span className={`w-3 h-3 rounded-full ${toneClasses[tone]}`} />
         <span className="text-xs font-bold text-slate-600">
@@ -48,7 +48,8 @@ export function ChecklistStep({
         ))}
       </div>
       <p className="text-xs text-slate-400 mt-4">
-        Esta checklist es orientativa. PJM confirmará el estado real de cada documento al revisar tu solicitud.
+        Esta es una autoevaluación orientativa, distinta del checklist operativo que PJM va a generar y revisar
+        una vez que solicites la cotización formal.
       </p>
     </Card>
   );

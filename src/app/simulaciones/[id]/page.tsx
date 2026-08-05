@@ -3,6 +3,8 @@ import { notFound } from 'next/navigation';
 import { Download, ArrowLeft } from 'lucide-react';
 import { requireUser } from '@/lib/dal';
 import { createClient } from '@/lib/supabase/server';
+import { createDefaultChecklistForSimulation } from '@/app/actions/checklist';
+import { computeChecklistStatus } from '@/lib/checklist';
 import { Badge } from '@/components/ui/Badge';
 import { formatMoney } from '@/lib/formatMoney';
 import { SIMULATION_STATUS_TONE, NCM_STATUS_TONE, DOCUMENT_STATUS_RISK, RISK_SEMAPHORE_CLASSES, RISK_SEMAPHORE_LABEL } from '@/lib/constants/statusStyles';
@@ -37,7 +39,7 @@ export default async function SimulationDetailPage({ params }: { params: Promise
 
   if (!simulation || simulation.user_id !== user.id) notFound();
 
-  const [{ data: items }, { data: documents }, { data: checklistItems }, { data: comments }, { data: quotes }, { data: scenarios }, { data: pjmRequest }] = await Promise.all([
+  const [{ data: items }, { data: documents }, { data: checklistItemsData }, { data: comments }, { data: quotes }, { data: scenarios }, { data: pjmRequest }] = await Promise.all([
     supabase.from('simulation_items').select('*').eq('simulation_id', id).returns<SimulationItemRow[]>(),
     supabase.from('documents').select('*').eq('simulation_id', id).neq('status', 'replaced').order('uploaded_at', { ascending: false }).returns<DocumentRow[]>(),
     supabase.from('simulation_checklist_items').select('*').eq('simulation_id', id).returns<SimulationChecklistItemRow[]>(),
@@ -46,6 +48,26 @@ export default async function SimulationDetailPage({ params }: { params: Promise
     supabase.from('simulation_alternative_scenarios').select('*').eq('simulation_id', id).order('created_at', { ascending: true }).returns<SimulationAlternativeScenarioRow[]>(),
     supabase.from('pjm_requests').select('*').eq('simulation_id', id).maybeSingle<PjmRequestRow>(),
   ]);
+
+  let checklistItems = checklistItemsData;
+  const canRequestQuote = simulation.status === 'draft' || simulation.status === 'completed';
+
+  // Self-heal: a simulation that was already submitted to PJM must have a
+  // checklist (createDefaultChecklistForSimulation runs on submit). If it's
+  // still empty here, the seed insert failed at submit time — retry it now.
+  // Idempotent and safe to call speculatively (see checklist.ts).
+  if (!canRequestQuote && (!checklistItems || checklistItems.length === 0)) {
+    const healed = await createDefaultChecklistForSimulation(id);
+    if (healed.ok) {
+      const { data: retriedItems } = await supabase
+        .from('simulation_checklist_items')
+        .select('*')
+        .eq('simulation_id', id)
+        .returns<SimulationChecklistItemRow[]>();
+      checklistItems = retriedItems;
+      simulation.checklist_status = computeChecklistStatus(retriedItems ?? []).semaphore;
+    }
+  }
 
   const latestQuote = quotes?.[0] ?? null;
 
@@ -56,7 +78,6 @@ export default async function SimulationDetailPage({ params }: { params: Promise
       : 0;
 
   const risk = DOCUMENT_STATUS_RISK[simulation.document_status as SimulationDocumentStatus] ?? 'rojo';
-  const canRequestQuote = simulation.status === 'draft' || simulation.status === 'completed';
 
   const resumen = (
     <>

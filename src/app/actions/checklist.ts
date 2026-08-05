@@ -12,18 +12,28 @@ import type { SimulationChecklistItemRow, SimulationRow } from '@/types/database
 
 /**
  * Idempotent: safe to call every time a simulation is (re-)submitted to
- * PJM. Uses the service-role client for the insert only — the row content
- * comes entirely from the fixed DEFAULT_CHECKLIST_ITEMS constant, never
- * from user input, and a plain client session has no INSERT policy on
+ * PJM, and safe to call speculatively as a self-heal check (see callers in
+ * the simulation detail pages) — it's a no-op whenever items already exist.
+ * Uses the service-role client for the insert only — the row content comes
+ * entirely from the fixed DEFAULT_CHECKLIST_ITEMS constant, never from user
+ * input, and a plain client session has no INSERT policy on
  * simulation_checklist_items (only admin_pjm does; clients can only flip an
  * existing item's status, see 0003_documents_checklist_admin.sql).
  */
-export async function createDefaultChecklistForSimulation(simulationId: string): Promise<void> {
+export async function createDefaultChecklistForSimulation(simulationId: string): Promise<{ ok: boolean; error?: string }> {
   const supabase = createServiceRoleClient();
-  const { data: existing } = await supabase.from('simulation_checklist_items').select('id').eq('simulation_id', simulationId).limit(1);
-  if (existing && existing.length > 0) return;
+  const { data: existing, error: selectError } = await supabase
+    .from('simulation_checklist_items')
+    .select('id')
+    .eq('simulation_id', simulationId)
+    .limit(1);
+  if (selectError) {
+    console.error(`[checklist] failed to check existing items for simulation ${simulationId}:`, selectError.message);
+    return { ok: false, error: selectError.message };
+  }
+  if (existing && existing.length > 0) return { ok: true };
 
-  await supabase.from('simulation_checklist_items').insert(
+  const { error: insertError } = await supabase.from('simulation_checklist_items').insert(
     DEFAULT_CHECKLIST_ITEMS.map((item) => ({
       simulation_id: simulationId,
       checklist_key: item.key,
@@ -33,7 +43,13 @@ export async function createDefaultChecklistForSimulation(simulationId: string):
       blocking: item.blocking,
     }))
   );
+  if (insertError) {
+    console.error(`[checklist] failed to seed default checklist for simulation ${simulationId}:`, insertError.message);
+    return { ok: false, error: insertError.message };
+  }
+
   await recalculateChecklistStatus(simulationId);
+  return { ok: true };
 }
 
 /** Recomputes simulations.checklist_status (draft/red/yellow/green) + has_blocking_documents. */

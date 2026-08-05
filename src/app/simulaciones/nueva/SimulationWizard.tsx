@@ -23,7 +23,7 @@ const STEP_LABELS = [
   'Intervenciones',
   'Logística',
   'Tributos',
-  'Checklist',
+  'Autoevaluación',
 ];
 
 export function SimulationWizard() {

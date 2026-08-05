@@ -22,6 +22,12 @@ export function mapAuthError(message: string | undefined): string {
   if (m.includes('rate limit') || m.includes('too many requests')) {
     return 'Se realizaron demasiados intentos. Esperá unos minutos y volvé a intentar.';
   }
+  if (m.includes('otp_expired') || m.includes('expired') || m.includes('token has expired') || m.includes('invalid')) {
+    return 'El link no es válido o ya expiró. Solicitá uno nuevo.';
+  }
+  if (m.includes('same_password') || (m.includes('new password') && m.includes('different'))) {
+    return 'La nueva contraseña debe ser distinta de la actual.';
+  }
   if (m.includes('fetch failed') || m.includes('network')) {
     return 'No pudimos conectarnos con el servidor de autenticación. Revisá tu conexión e intentá nuevamente.';
   }

@@ -291,7 +291,10 @@ export async function requestFormalQuote(simulationId: string): Promise<{ ok: tr
     requestId = newRequest.id;
   }
 
-  await createDefaultChecklistForSimulation(simulationId);
+  const checklistResult = await createDefaultChecklistForSimulation(simulationId);
+  if (!checklistResult.ok) {
+    console.error(`[requestFormalQuote] checklist creation failed for simulation ${simulationId}, will retry lazily on next view:`, checklistResult.error);
+  }
 
   await logAuditEvent({
     entityType: 'pjm_request',
